@@ -55,6 +55,7 @@ class Move:
         self.delta_v2 = 2.0 * self.move_d * self.accel
         self.smooth_delta_v2 = min(self.smooth_delta_v2, self.delta_v2)
     def move_error(self, msg="Move out of range"):
+        logging.info("Failing move from %s to %s", self.start_pos, self.end_pos)
         ep = self.end_pos
         m = "%s: %.3f %.3f %.3f [%.3f]" % (msg, ep[0], ep[1], ep[2], ep[3])
         return self.toolhead.printer.command_error(m)
@@ -400,6 +401,8 @@ class ToolHead:
     def get_position(self):
         return list(self.commanded_pos)
     def set_position(self, newpos, homing_axes=()):
+        logging.info("Forcing position %s to %s [%s]", self.commanded_pos,
+                     newpos, homing_axes)
         self.flush_step_generation()
         ffi_main, ffi_lib = chelper.get_ffi()
         ffi_lib.trapq_set_position(self.trapq, self.print_time,
@@ -408,6 +411,7 @@ class ToolHead:
         self.kin.set_position(newpos, homing_axes)
         self.printer.send_event("toolhead:set_position")
     def move(self, newpos, speed):
+        logging.info("Moving from %s to %s", self.commanded_pos, newpos)
         move = Move(self, self.commanded_pos, newpos, speed)
         if not move.move_d:
             return
