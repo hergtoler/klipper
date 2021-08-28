@@ -667,6 +667,13 @@ class MenuVSDList(MenuList):
         super(MenuVSDList, self)._populate()
         sdcard = self.manager.printer.lookup_object('virtual_sdcard', None)
         if sdcard is not None:
+            if(os.path.samefile(sdcard.sdcard_dirname, sdcard.sdcard_basedirname) == False):
+                self.insert_item(self.manager.menuitem_from(
+                    'command', name='[Parent]', gcode='SDCARD_CHDIR DIRECTORY=..'))
+            dirs = sdcard.get_dir_list()
+            for fname, fsize in dirs:
+                self.insert_item(self.manager.menuitem_from(
+                    'command', name=repr(fname), gcode='SDCARD_CHDIR DIRECTORY=%s' % str(fname)))
             files = sdcard.get_file_list()
             for fname, fsize in files:
                 self.insert_item(self.manager.menuitem_from(

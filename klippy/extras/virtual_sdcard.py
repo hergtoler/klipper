@@ -13,7 +13,8 @@ class VirtualSD:
         printer.register_event_handler("klippy:shutdown", self.handle_shutdown)
         # sdcard state
         sd = config.get('path')
-        self.sdcard_dirname = os.path.normpath(os.path.expanduser(sd))
+        self.sdcard_basedirname = os.path.normpath(os.path.expanduser(sd))
+        self.sdcard_dirname = self.sdcard_basedirname
         self.current_file = None
         self.file_position = self.file_size = 0
         # Print Stat Tracking
@@ -35,6 +36,12 @@ class VirtualSD:
         self.gcode.register_command(
             "SDCARD_PRINT_FILE", self.cmd_SDCARD_PRINT_FILE,
             desc=self.cmd_SDCARD_PRINT_FILE_help)
+        self.gcode.register_command(
+            "SDCARD_LIST", self.cmd_SDCARD_LIST,
+            desc=self.cmd_SDCARD_LIST_help)
+        self.gcode.register_command(
+            "SDCARD_CHDIR", self.cmd_SDCARD_CHDIR,
+            desc=self.cmd_SDCARD_CHDIR_help)
     def handle_shutdown(self):
         if self.work_timer is not None:
             self.must_pause_work = True
@@ -78,6 +85,17 @@ class VirtualSD:
             except:
                 logging.exception("virtual_sdcard get_file_list")
                 raise self.gcode.error("Unable to get file list")
+    def get_dir_list(self):
+            dname = self.sdcard_dirname
+            try:
+                filenames = os.listdir(self.sdcard_dirname)
+                return [(fname, os.path.getsize(os.path.join(dname, fname)))
+                        for fname in sorted(filenames, key=str.lower)
+                        if not fname.startswith('.')
+                        and os.path.isdir((os.path.join(dname, fname)))]
+            except:
+                logging.exception("virtual_sdcard get_dir_list")
+                raise self.gcode.error("Unable to get dir list")
     def get_status(self, eventtime):
         return {
             'file_path': self.file_path(),
@@ -143,6 +161,26 @@ class VirtualSD:
             filename = filename[1:]
         self._load_file(gcmd, filename, check_subdirs=True)
         self.do_resume()
+    cmd_SDCARD_LIST_help = "Lists files and directories on the SD card."
+    def cmd_SDCARD_LIST(self, gcmd):
+        # List SD card
+        dirs = self.get_dir_list()
+        files = self.get_file_list()
+        gcmd.respond_raw("Begin file list")
+        for fname, fsize in dirs:
+            gcmd.respond_raw("%s/" % (fname))
+        for fname, fsize in files:
+            gcmd.respond_raw("%s %d" % (fname, fsize))
+        gcmd.respond_raw("End file list")
+    cmd_SDCARD_CHDIR_help = "Temporarily changes the vsdcard directory."
+    def cmd_SDCARD_CHDIR(self, gcmd):
+        dirname = gcmd.get("DIRECTORY")
+        newdir = os.path.normpath(os.path.join(self.sdcard_dirname, dirname))
+        if(os.path.isdir(newdir)):
+            self.sdcard_dirname = newdir
+            gcmd.respond_raw("New directory: %s" % (newdir))
+        else:
+            gcmd.respond_raw("Unable to change to directory %s" % (newdir))
     def cmd_M20(self, gcmd):
         # List SD card
         files = self.get_file_list()
