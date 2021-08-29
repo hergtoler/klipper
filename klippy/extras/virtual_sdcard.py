@@ -176,7 +176,8 @@ class VirtualSD:
     def cmd_SDCARD_CHDIR(self, gcmd):
         dirname = gcmd.get("DIRECTORY")
         newdir = os.path.normpath(os.path.join(self.sdcard_dirname, dirname))
-        if(os.path.isdir(newdir)):
+        common = os.path.commonprefix([newdir, self.sdcard_basedirname])
+        if(os.path.isdir(newdir) and os.path.samefile(common, self.sdcard_basedirname)):
             self.sdcard_dirname = newdir
             gcmd.respond_raw("New directory: %s" % (newdir))
         else:
