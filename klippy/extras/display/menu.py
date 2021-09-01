@@ -677,7 +677,7 @@ class MenuVSDList(MenuList):
             files = sdcard.get_file_list()
             for fname, fsize in files:
                 self.insert_item(self.manager.menuitem_from(
-                    'command', name=repr(fname), gcode='M23 /%s' % str(fname)))
+                    'command', name=repr(fname), gcode='SDCARD_PRINT_FILE FILENAME=%s' % str(fname)))
 
 
 menu_items = {
@@ -947,6 +947,15 @@ class MenuManager:
             else:
                 # current is None, no selection. passthru to container
                 container.run_script(event)
+                
+            if isinstance(container, MenuVSDList):
+                if (os.path.splitext(current.render_name())[1] == ''):
+                    # a directory was selected, force the menu to be repopulated
+                    self.back()
+                    # would like to be able to click here to go back into the SD Card menu
+                else:
+                    # a gcode file was selected, bump out to info screen
+                    self.exit()
 
     def queue_gcode(self, script):
         if not script:
